@@ -1,0 +1,920 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>车+摩意险成本动态测算工具</title>
+    <script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
+    <style>
+        /* 通用样式 */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            background-color: #f2f3f5; /* 更柔和的灰色背景 */
+            color: #333;
+            min-height: 100vh;
+        }
+        a {
+            text-decoration: none;
+        }
+
+        /* 页面布局容器 */
+        .page-container {
+            display: flex;
+            max-width: 1600px;
+            margin: 0 auto;
+            padding: 20px;
+            gap: 24px;
+            position: relative;  /* 添加相对定位 */
+        }
+
+        /* 顶部区域，用于放置标题和切换按钮 */
+        .header-bar {
+            background-color: #fff;
+            padding: 16px 20px;
+            box-shadow: 0 1px 5px rgba(0,0,0,0.08);
+            position: sticky;
+            top: 0;
+            z-index: 9999;
+            display: flex;
+            justify-content: center;  /* 修改为居中对齐 */
+            align-items: center;
+            gap: 20px;  /* 添加间距 */
+        }
+        .page-title {
+            font-size: 20px;
+            color: #202124;
+            font-weight: 500;
+            margin: 0;  /* 移除默认边距 */
+        }
+        .parameters-toggle {
+            position: absolute;  /* 绝对定位 */
+            right: 20px;        /* 固定在右侧 */
+            background-color: #1a73e8;
+            color: #fff;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: background-color 0.3s;
+        }
+        .parameters-toggle:hover {
+            background-color: #1669c1;
+        }
+
+        /* 侧边栏：参数设置部分 */
+        .parameters-container {
+            width: 300px;
+            flex-shrink: 0;
+            background-color: #fff;
+            border-radius: 12px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+            max-height: calc(100vh - 80px);
+            overflow-y: auto;
+            padding: 20px;
+            transition: transform 0.3s ease, opacity 0.3s ease;
+        }
+        /* 隐藏时给一个向左移动并淡出的效果 */
+        .parameters-container.hide {
+            transform: translateX(-320px);
+            opacity: 0;
+        }
+
+        /* 参数输入区 */
+        .input-section {
+            margin-bottom: 20px;
+            background: #f8f9fa;
+            padding: 16px;
+            border-radius: 8px;
+        }
+        .input-section h3 {
+            font-size: 14px;
+            color: #1a73e8;
+            margin-bottom: 12px;
+            font-weight: 600;
+        }
+        .form-group {
+            margin-bottom: 12px;
+            position: relative;
+        }
+        label {
+            font-size: 12px;
+            color: #5f6368;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 4px;
+        }
+        .default-value {
+            font-size: 11px;
+            color: #80868b;
+        }
+        input[type=number] {
+            width: calc(100% - 32px);
+            padding: 8px;
+            border: 1px solid #dadce0;
+            border-radius: 6px;
+            font-size: 13px;
+            color: #3c4043;
+            transition: border-color 0.2s;
+        }
+        input[type=number]:focus {
+            outline: none;
+            border-color: #1a73e8;
+        }
+        .unit {
+            position: absolute;
+            right: 12px;
+            top: 36px;
+            color: #80868b;
+            font-size: 12px;
+        }
+
+        /* 主内容区，含图表展示 */
+        .main-container {
+            flex: 1;
+            transition: margin-left 0.3s ease;  /* 添加过渡效果 */
+        }
+        
+        /* 当参数面板隐藏时，让主内容区居中 */
+        .parameters-container.hide + .main-container {
+            margin-left: -150px;  /* 向左偏移以保持居中 */
+        }
+
+        /* 图表组样式 */
+        .charts-container {
+            display: flex;
+            flex-direction: column;
+            gap: 30px;
+            padding: 20px;
+            max-width: 1600px;
+            margin: 0 auto;
+        }
+
+        .chart-section {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .section-title {
+            font-size: 16px;
+            font-weight: 500;
+            color: #333;
+            margin: 0;
+            padding-left: 10px;
+        }
+
+        .charts-row {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 20px;
+        }
+
+        .chart-container {
+            background: #fff;
+            border-radius: 8px;
+            padding: 15px;
+            height: 320px;  /* 增加图表容器高度 */
+            margin-bottom: 20px;
+        }
+
+        .chart {
+            width: 100%;
+            height: 100%;
+        }
+
+        /* 指标说明按钮样式 */
+        .help-button {
+            background-color: #f8f9fa;
+            border: 1px solid #dadce0;
+            color: #1a73e8;
+            padding: 6px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            transition: all 0.2s;
+            position: absolute;
+            right: 20px;
+            top: 20px;
+        }
+        .help-button:hover {
+            background-color: #f1f3f4;
+            border-color: #1a73e8;
+        }
+        .help-button svg {
+            width: 16px;
+            height: 16px;
+        }
+
+        /* 指标说明弹窗样式 */
+        .indicator-modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            z-index: 10000;
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+        .indicator-modal.show {
+            display: flex;
+            opacity: 1;
+        }
+        .modal-content {
+            background-color: #fff;
+            border-radius: 12px;
+            padding: 24px;
+            margin: auto;
+            width: 90%;
+            max-width: 600px;
+            max-height: 80vh;
+            overflow-y: auto;
+            position: relative;
+            box-shadow: 0 4px 24px rgba(0, 0, 0, 0.15);
+        }
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 12px;
+            border-bottom: 1px solid #f1f3f4;
+        }
+        .modal-title {
+            font-size: 18px;
+            font-weight: 500;
+            color: #202124;
+        }
+        .close-modal {
+            background: none;
+            border: none;
+            color: #5f6368;
+            cursor: pointer;
+            padding: 8px;
+            font-size: 20px;
+        }
+        .indicator-group {
+            margin-bottom: 24px;
+        }
+        .indicator-group h3 {
+            font-size: 16px;
+            color: #1a73e8;
+            margin-bottom: 12px;
+        }
+        .indicator-item {
+            margin-bottom: 16px;
+            padding-left: 16px;
+            border-left: 2px solid #f1f3f4;
+        }
+        .indicator-item h4 {
+            font-size: 14px;
+            color: #202124;
+            margin-bottom: 4px;
+        }
+        .indicator-item p {
+            font-size: 14px;
+            color: #5f6368;
+            line-height: 1.5;
+            margin: 0;
+        }
+
+        /* 响应式：当屏幕宽度小于 1200px 时，变为上下排布 */
+        @media (max-width: 1200px) {
+            .page-container {
+                flex-direction: column;
+                padding: 20px 10px;
+            }
+            
+            /* 移动端时重置主内容区样式 */
+            .parameters-container.hide + .main-container {
+                margin-left: 0;
+            }
+            
+            /* 移动端时调整标题和按钮布局 */
+            .header-bar {
+                flex-direction: column;
+                gap: 12px;
+                padding: 12px;
+            }
+            
+            .parameters-toggle {
+                position: static;  /* 重置定位 */
+                width: 100%;      /* 占满宽度 */
+            }
+            
+            .charts-row {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- 顶部标题+按钮 -->
+    <div class="header-bar">
+        <h1 class="page-title">车+摩意险成本动态测算工具</h1>
+        <button class="parameters-toggle" id="parametersToggleBtn">显示参数设置</button>
+    </div>
+
+    <div class="page-container">
+        <!-- 添加指标说明按钮 -->
+        <button class="help-button" id="helpBtn">
+            <svg viewBox="0 0 24 24" fill="currentColor">
+                <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 17h-2v-2h2v2zm2.07-7.75l-.9.92C13.45 12.9 13 13.5 13 15h-2v-.5c0-1.1.45-2.1 1.17-2.83l1.24-1.26c.37-.36.59-.86.59-1.41 0-1.1-.9-2-2-2s-2 .9-2 2H8c0-2.21 1.79-4 4-4s4 1.79 4 4c0 .88-.36 1.68-.93 2.25z"/>
+            </svg>
+            指标说明
+        </button>
+
+        <!-- 指标说明弹窗 -->
+        <div class="indicator-modal" id="indicatorModal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h2 class="modal-title">计算公式说明</h2>
+                    <button class="close-modal" id="closeModal">×</button>
+                </div>
+                <div class="indicator-group">
+                    <h3>固定参数</h3>
+                    <div class="indicator-item">
+                        <h4>固定运营成本率</h4>
+                        <p>固定值：6%（0.06）</p>
+                        <p>说明：用于计算固定运营成本</p>
+                    </div>
+                    <div class="indicator-item">
+                        <h4>人力成本系数</h4>
+                        <p>固定值：2.8%（0.028）</p>
+                        <p>说明：用于计算人力成本，与标保系数配合使用</p>
+                    </div>
+                </div>
+                <div class="indicator-group">
+                    <h3>车险计算公式</h3>
+                    <div class="indicator-item">
+                        <h4>赔款</h4>
+                        <p>公式：车险保费 × 赔付率</p>
+                    </div>
+                    <div class="indicator-item">
+                        <h4>手续费</h4>
+                        <p>公式：车险保费 × 手续费率</p>
+                    </div>
+                    <div class="indicator-item">
+                        <h4>销推费用</h4>
+                        <p>公式：车险保费 × 销推费用率</p>
+                    </div>
+                    <div class="indicator-item">
+                        <h4>人力成本</h4>
+                        <p>公式：车险保费 × 标保系数 × 人力成本基数</p>
+                    </div>
+                    <div class="indicator-item">
+                        <h4>变动成本率</h4>
+                        <p>公式：赔付率 + 手续费率 + 销推费用率 + 人力成本率</p>
+                        <p>其中：人力成本率 = 标保系数 × 人力成本基数</p>
+                    </div>
+                    <div class="indicator-item">
+                        <h4>综合成本率</h4>
+                        <p>公式：变动成本率 + 6%</p>
+                    </div>
+                    <div class="indicator-item">
+                        <h4>边贡额</h4>
+                        <p>公式：车险保费 × (1 - 变动成本率)</p>
+                    </div>
+                    <div class="indicator-item">
+                        <h4>利润</h4>
+                        <p>公式：车险保费 × (1 - 综合成本率)</p>
+                    </div>
+                </div>
+                <div class="indicator-group">
+                    <h3>摩意险计算公式</h3>
+                    <div class="indicator-item">
+                        <h4>保费</h4>
+                        <p>公式：车险保费 × 保费配比</p>
+                    </div>
+                    <div class="indicator-item">
+                        <h4>赔款</h4>
+                        <p>公式：摩意险保费 × 赔付率</p>
+                    </div>
+                    <div class="indicator-item">
+                        <h4>手续费</h4>
+                        <p>公式：摩意险保费 × 手续费率</p>
+                    </div>
+                    <div class="indicator-item">
+                        <h4>销推费用</h4>
+                        <p>公式：摩意险保费 × 销推费用率</p>
+                    </div>
+                    <div class="indicator-item">
+                        <h4>人力成本</h4>
+                        <p>公式：摩意险保费 × 标保系数 × 人力成本基数</p>
+                    </div>
+                    <div class="indicator-item">
+                        <h4>变动成本率</h4>
+                        <p>公式：赔付率 + 手续费率 + 销推费用率 + 人力成本率</p>
+                        <p>其中：人力成本率 = 标保系数 × 人力成本基数</p>
+                    </div>
+                    <div class="indicator-item">
+                        <h4>综合成本率</h4>
+                        <p>公式：变动成本率 + 6%</p>
+                    </div>
+                    <div class="indicator-item">
+                        <h4>边贡额</h4>
+                        <p>公式：摩意险保费 × (1 - 变动成本率)</p>
+                    </div>
+                    <div class="indicator-item">
+                        <h4>利润</h4>
+                        <p>公式：摩意险保费 × (1 - 综合成本率)</p>
+                    </div>
+                </div>
+                <div class="indicator-group">
+                    <h3>综合计算公式</h3>
+                    <div class="indicator-item">
+                        <h4>总保费</h4>
+                        <p>公式：车险保费 + 摩意险保费</p>
+                    </div>
+                    <div class="indicator-item">
+                        <h4>总赔款</h4>
+                        <p>公式：车险赔款 + 摩意险赔款</p>
+                    </div>
+                    <div class="indicator-item">
+                        <h4>总手续费</h4>
+                        <p>公式：车险手续费 + 摩意险手续费</p>
+                    </div>
+                    <div class="indicator-item">
+                        <h4>总销推费用</h4>
+                        <p>公式：车险销推费用 + 摩意险销推费用</p>
+                    </div>
+                    <div class="indicator-item">
+                        <h4>总人力成本</h4>
+                        <p>公式：车险人力成本 + 摩意险人力成本</p>
+                    </div>
+                    <div class="indicator-item">
+                        <h4>变动成本率</h4>
+                        <p>公式：(总赔款 + 总手续费 + 总销推费用 + 总人力成本) ÷ 总保费</p>
+                    </div>
+                    <div class="indicator-item">
+                        <h4>综合成本率</h4>
+                        <p>公式：变动成本率 + 6%</p>
+                    </div>
+                    <div class="indicator-item">
+                        <h4>总边贡额</h4>
+                        <p>公式：总保费 × (1 - 变动成本率)</p>
+                    </div>
+                    <div class="indicator-item">
+                        <h4>总利润</h4>
+                        <p>公式：总保费 × (1 - 综合成本率)</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 参数设置侧边栏 -->
+        <div class="parameters-container" id="parametersContainer">
+            <div class="input-section">
+                <h3>基础参数</h3>
+                <div class="form-group">
+                    <label>
+                        <span>人力成本基数</span>
+                        <span class="default-value">默认：2.8%</span>
+                    </label>
+                    <input type="number" id="laborBaseRate" name="laborBaseRate" value="2.8" step="0.1">
+                    <span class="unit">%</span>
+                </div>
+                <div class="form-group">
+                    <label>
+                        <span>固定运营成本率</span>
+                        <span class="default-value">默认：6%</span>
+                    </label>
+                    <input type="number" id="fixedOperationRate" name="fixedOperationRate" value="6" step="0.1">
+                    <span class="unit">%</span>
+                </div>
+            </div>
+
+            <div class="input-section">
+                <h3>车险参数</h3>
+                <div class="form-group">
+                    <label>
+                        <span>车险保费</span>
+                        <span class="default-value">默认：1000</span>
+                    </label>
+                    <input type="number" id="carPremium" name="carPremium" value="1000" step="100">
+                    <span class="unit">万元</span>
+                </div>
+                <div class="form-group">
+                    <label>
+                        <span>赔付率</span>
+                        <span class="default-value">默认：130%</span>
+                    </label>
+                    <input type="number" id="carLossRatio" name="carLossRatio" value="130" step="0.1">
+                    <span class="unit">%</span>
+                </div>
+                <div class="form-group">
+                    <label>
+                        <span>保单获取成本率</span>
+                        <span class="default-value">默认：0%</span>
+                    </label>
+                    <input type="number" id="carHandlingFeeRate" name="carHandlingFeeRate" value="0" step="0.1">
+                    <span class="unit">%</span>
+                </div>
+                <div class="form-group">
+                    <label>
+                        <span>销售推动费用率</span>
+                        <span class="default-value">默认：0.3%</span>
+                    </label>
+                    <input type="number" id="carSalesPromotionRate" name="carSalesPromotionRate" value="0.3" step="0.1">
+                    <span class="unit">%</span>
+                </div>
+                <div class="form-group">
+                    <label>
+                        <span>标保系数</span>
+                        <span class="default-value">默认：0.5</span>
+                    </label>
+                    <input type="number" id="carStandardPremiumRatio" name="carStandardPremiumRatio" value="0.5" step="0.1">
+                </div>
+            </div>
+
+            <div class="input-section">
+                <h3>摩意险参数</h3>
+                <div class="form-group">
+                    <label>
+                        <span>保费配比</span>
+                        <span class="default-value">默认：1.75</span>
+                    </label>
+                    <input type="number" id="motoPremiumRatio" name="motoPremiumRatio" value="1.75" step="0.01">
+                    <span class="unit">倍</span>
+                </div>
+                <div class="form-group">
+                    <label>
+                        <span>赔付率</span>
+                        <span class="default-value">默认：2.4%</span>
+                    </label>
+                    <input type="number" id="motoLossRatio" name="motoLossRatio" value="2.4" step="0.1">
+                    <span class="unit">%</span>
+                </div>
+                <div class="form-group">
+                    <label>
+                        <span>保单获取成本率</span>
+                        <span class="default-value">默认：66.1%</span>
+                    </label>
+                    <input type="number" id="motoHandlingFeeRate" name="motoHandlingFeeRate" value="66.1" step="0.1">
+                    <span class="unit">%</span>
+                </div>
+                <div class="form-group">
+                    <label>
+                        <span>销售推动费用率</span>
+                        <span class="default-value">默认：0.9%</span>
+                    </label>
+                    <input type="number" id="motoSalesPromotionRate" name="motoSalesPromotionRate" value="0.9" step="0.1">
+                    <span class="unit">%</span>
+                </div>
+                <div class="form-group">
+                    <label>
+                        <span>标保系数</span>
+                        <span class="default-value">默认：1.8</span>
+                    </label>
+                    <input type="number" id="motoStandardPremiumRatio" name="motoStandardPremiumRatio" value="1.8" step="0.1">
+                </div>
+            </div>
+        </div>
+
+        <!-- 主内容区，含图表展示 -->
+        <div class="main-container">
+            <div class="charts-container">
+                <!-- 车+摩意整体 -->
+                <div class="chart-section">
+                    <h3 class="section-title">车+摩意整体</h3>
+                    <div class="charts-row">
+                        <div class="chart-container">
+                            <div id="combinedAbsolute" class="chart"></div>
+                        </div>
+                        <div class="chart-container">
+                            <div id="combinedRate" class="chart"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 车险 -->
+                <div class="chart-section">
+                    <h3 class="section-title">车险</h3>
+                    <div class="charts-row">
+                        <div class="chart-container">
+                            <div id="carAbsolute" class="chart"></div>
+                        </div>
+                        <div class="chart-container">
+                            <div id="carRate" class="chart"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 摩意险 -->
+                <div class="chart-section">
+                    <h3 class="section-title">摩意险</h3>
+                    <div class="charts-row">
+                        <div class="chart-container">
+                            <div id="motoAbsolute" class="chart"></div>
+                        </div>
+                        <div class="chart-container">
+                            <div id="motoRate" class="chart"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        // 切换参数面板显示/隐藏
+        const parametersToggleBtn = document.getElementById('parametersToggleBtn');
+        const parametersContainer = document.getElementById('parametersContainer');
+
+        // 默认隐藏：在大屏幕下并没有真正隐藏，只是通过 .hide 改变透明度和偏移；小屏幕下则通过 .show/.hide 切换
+        parametersToggleBtn.addEventListener('click', function() {
+            // 当屏幕较窄时，采用切换 show/hide 进行动画展开
+            if (window.innerWidth < 1200) {
+                parametersContainer.classList.toggle('show');
+                // 如果此时为 show，则按钮文字改为“隐藏参数设置”，否则反之
+                parametersToggleBtn.textContent = parametersContainer.classList.contains('show')
+                    ? '隐藏参数设置'
+                    : '显示参数设置';
+            } 
+            // 当屏幕较宽时，用 .hide/.hide 移动侧边栏
+            else {
+                parametersContainer.classList.toggle('hide');
+                parametersToggleBtn.textContent = parametersContainer.classList.contains('hide')
+                    ? '显示参数设置'
+                    : '隐藏参数设置';
+            }
+        });
+
+        // 计算逻辑与图表逻辑（与原始代码一致，这里仅保留并在最后初始化即可）
+        function calculateIndicators() {
+            // 获取输入值
+            const carPremium = parseFloat(document.getElementById('carPremium').value) || 0;
+            const carLossRatio = parseFloat(document.getElementById('carLossRatio').value) / 100 || 0;
+            const carHandlingFeeRate = parseFloat(document.getElementById('carHandlingFeeRate').value) / 100 || 0;
+            const carSalesPromotionRate = parseFloat(document.getElementById('carSalesPromotionRate').value) / 100 || 0;
+            const carStandardPremiumRatio = parseFloat(document.getElementById('carStandardPremiumRatio').value) || 0.5;
+
+            const motoPremiumRatio = parseFloat(document.getElementById('motoPremiumRatio').value) || 0;
+            const motoLossRatio = parseFloat(document.getElementById('motoLossRatio').value) / 100 || 0;
+            const motoHandlingFeeRate = parseFloat(document.getElementById('motoHandlingFeeRate').value) / 100 || 0;
+            const motoSalesPromotionRate = parseFloat(document.getElementById('motoSalesPromotionRate').value) / 100 || 0;
+            const motoStandardPremiumRatio = parseFloat(document.getElementById('motoStandardPremiumRatio').value) || 1.8;
+
+            // 获取基础参数
+            const laborBaseRate = parseFloat(document.getElementById('laborBaseRate').value) / 100 || 0.028;
+            const fixedOperationRate = parseFloat(document.getElementById('fixedOperationRate').value) / 100 || 0.06;
+
+            // 计算人力成本率（人力成本率 = 标保系数 * 人力成本基数）
+            const carLaborCostRate = carStandardPremiumRatio * laborBaseRate;
+            const motoLaborCostRate = motoStandardPremiumRatio * laborBaseRate;
+
+            // 计算车险指标
+            const carVariableCostRate = carLossRatio + carHandlingFeeRate + carSalesPromotionRate + carLaborCostRate;
+            const carTotalCostRate = carVariableCostRate + fixedOperationRate;
+            const carEdgeContributionRate = 1 - carVariableCostRate;
+
+            // 计算摩意险指标
+            const motoPremium = carPremium * motoPremiumRatio;
+            const motoVariableCostRate = motoLossRatio + motoHandlingFeeRate + motoSalesPromotionRate + motoLaborCostRate;
+            const motoTotalCostRate = motoVariableCostRate + fixedOperationRate;
+            const motoEdgeContributionRate = 1 - motoVariableCostRate;
+
+            // 计算绝对值
+            const carLoss = carPremium * carLossRatio;
+            const carHandlingFee = carPremium * carHandlingFeeRate;
+            const carSalesPromotion = carPremium * carSalesPromotionRate;
+            const carLaborCost = carPremium * carLaborCostRate;
+            const carEdgeContribution = carPremium * carEdgeContributionRate;
+            const carProfit = carPremium * (1 - carTotalCostRate);
+
+            const motoLoss = motoPremium * motoLossRatio;
+            const motoHandlingFee = motoPremium * motoHandlingFeeRate;
+            const motoSalesPromotion = motoPremium * motoSalesPromotionRate;
+            const motoLaborCost = motoPremium * motoLaborCostRate;
+            const motoEdgeContribution = motoPremium * motoEdgeContributionRate;
+            const motoProfit = motoPremium * (1 - motoTotalCostRate);
+
+            // 计算总体指标
+            const totalPremium = carPremium + motoPremium;
+            const totalLoss = carLoss + motoLoss;
+            const totalHandlingFee = carHandlingFee + motoHandlingFee;
+            const totalSalesPromotion = carSalesPromotion + motoSalesPromotion;
+            const totalLaborCost = carLaborCost + motoLaborCost;
+            const totalVariableCostRate = (totalLoss + totalHandlingFee + totalSalesPromotion + totalLaborCost) / totalPremium;
+            const totalCostRate = totalVariableCostRate + fixedOperationRate;
+            const totalEdgeContribution = carEdgeContribution + motoEdgeContribution;
+            const totalProfit = carProfit + motoProfit;
+            const totalEdgeContributionRate = 1 - totalVariableCostRate;
+
+            // 更新图表
+            updateCharts(
+                // 车险数据
+                [carPremium, carLoss, carHandlingFee, carSalesPromotion, carLaborCost, carEdgeContribution, carProfit],
+                [carTotalCostRate, carVariableCostRate, carLossRatio, carHandlingFeeRate, carSalesPromotionRate, carLaborCostRate, carEdgeContributionRate],
+                // 摩意险数据
+                [motoPremium, motoLoss, motoHandlingFee, motoSalesPromotion, motoLaborCost, motoEdgeContribution, motoProfit],
+                [motoTotalCostRate, motoVariableCostRate, motoLossRatio, motoHandlingFeeRate, motoSalesPromotionRate, motoLaborCostRate, motoEdgeContributionRate],
+                // 总体数据
+                [totalPremium, totalLoss, totalHandlingFee, totalSalesPromotion, totalLaborCost, totalEdgeContribution, totalProfit],
+                [totalCostRate, totalVariableCostRate, totalLoss/totalPremium, totalHandlingFee/totalPremium, totalSalesPromotion/totalPremium, totalLaborCost/totalPremium, totalEdgeContributionRate]
+            );
+        }
+
+        // 基础图表配置
+        const baseChartOption = {
+            grid: {
+                left: '3%',
+                right: '4%',
+                bottom: '15%',  // 增加底部边距
+                top: '15%',     // 增加顶部边距
+                containLabel: true
+            },
+            xAxis: {
+                type: 'category',
+                axisLabel: {
+                    fontSize: 11,
+                    interval: 0,
+                    color: '#666'
+                },
+                axisTick: { show: false },
+                axisLine: { show: false }
+            },
+            yAxis: {
+                show: false,
+                type: 'value'
+            },
+            series: [{
+                barWidth: '40%',
+                barGap: '30%'
+            }]
+        };
+
+        // 生成图表：绝对值
+        function createAbsoluteChartOption(data) {
+            return {
+                ...baseChartOption,
+                series: [{
+                    ...baseChartOption.series[0],
+                    data: data.map(value => ({
+                        value: Math.round(value),
+                        itemStyle: {
+                            color: value < 0 ? '#ff6b6b' : '#a8a8a8',
+                            borderRadius: [4, 4, 0, 0]
+                        },
+                        label: {
+                            show: true,
+                            position: value < 0 ? 'bottom' : 'top',
+                            distance: value < 0 ? 10 : 0
+                        }
+                    })),
+                    type: 'bar'
+                }],
+                xAxis: {
+                    ...baseChartOption.xAxis,
+                    data: ['保费', '赔款', '手续费', '销推费用', '人力成本', '边贡额', '利润']
+                }
+            };
+        }
+
+        // 生成图表：比率
+        function createRateChartOption(data) {
+            return {
+                ...baseChartOption,
+                series: [{
+                    ...baseChartOption.series[0],
+                    data: data.map((value, index) => {
+                        const valPct = (value * 100).toFixed(1);
+                        const isNegative = valPct < 0;
+                        const isEdgeContribution = index === 6; // 边贡率的索引
+                        return {
+                            value: valPct,
+                            itemStyle: {
+                                color: (isEdgeContribution && isNegative) || value > 1 ? '#ff6b6b' : '#a8a8a8',
+                                borderRadius: [4, 4, 0, 0]
+                            },
+                            label: {
+                                show: true,
+                                position: isNegative ? 'bottom' : 'top',
+                                formatter: '{c}%',
+                                color: isNegative ? '#ff6b6b' : '#333',  // 负值文字显示为红色
+                                fontSize: 11,
+                                distance: isNegative ? 10 : 0
+                            }
+                        };
+                    }),
+                    type: 'bar'
+                }],
+                xAxis: {
+                    ...baseChartOption.xAxis,
+                    data: [
+                        '综合成本率',
+                        '变动成本率',
+                        '赔付率',
+                        '手续费率',
+                        '销推费用率',
+                        '人力成本率',
+                        '边贡率'
+                    ]
+                }
+            };
+        }
+
+        // 更新所有图表
+        function updateCharts(carData, carRateData, motoData, motoRateData, combinedData, combinedRateData) {
+            charts.carAbsolute.setOption(
+                createAbsoluteChartOption(carData)
+            );
+            charts.carRate.setOption(
+                createRateChartOption(carRateData)
+            );
+
+            charts.motoAbsolute.setOption(
+                createAbsoluteChartOption(motoData)
+            );
+            charts.motoRate.setOption(
+                createRateChartOption(motoRateData)
+            );
+
+            charts.combinedAbsolute.setOption(
+                createAbsoluteChartOption(combinedData)
+            );
+            charts.combinedRate.setOption(
+                createRateChartOption(combinedRateData)
+            );
+        }
+
+        // 初始化图表实例
+        const charts = {
+            carAbsolute: echarts.init(document.getElementById('carAbsolute')),
+            carRate: echarts.init(document.getElementById('carRate')),
+            motoAbsolute: echarts.init(document.getElementById('motoAbsolute')),
+            motoRate: echarts.init(document.getElementById('motoRate')),
+            combinedAbsolute: echarts.init(document.getElementById('combinedAbsolute')),
+            combinedRate: echarts.init(document.getElementById('combinedRate')),
+        };
+
+        // 每当输入变化，更新图表
+        const inputIds = [
+            'carPremium', 'carLossRatio', 'carHandlingFeeRate', 'carSalesPromotionRate', 'carStandardPremiumRatio',
+            'motoPremiumRatio', 'motoLossRatio', 'motoHandlingFeeRate', 'motoSalesPromotionRate', 'motoStandardPremiumRatio',
+            'laborBaseRate', 'fixedOperationRate'  // 添加基础参数
+        ];
+        
+        // 确保DOM完全加载后执行
+        document.addEventListener('DOMContentLoaded', function() {
+            // 绑定输入事件
+            inputIds.forEach(id => {
+                const input = document.getElementById(id);
+                if (input) {
+                    input.addEventListener('input', calculateIndicators);
+                    input.addEventListener('change', calculateIndicators);
+                }
+            });
+
+            // 初始化图表
+            calculateIndicators();
+        });
+
+        // 监听窗口大小变化，自动 resize
+        window.addEventListener('resize', () => {
+            Object.values(charts).forEach(chart => chart.resize());
+        });
+
+        // 添加指标说明功能
+        const helpBtn = document.getElementById('helpBtn');
+        const indicatorModal = document.getElementById('indicatorModal');
+        const closeModal = document.getElementById('closeModal');
+
+        helpBtn.addEventListener('click', () => {
+            indicatorModal.classList.add('show');
+            // 禁止背景滚动
+            document.body.style.overflow = 'hidden';
+        });
+
+        closeModal.addEventListener('click', () => {
+            indicatorModal.classList.remove('show');
+            // 恢复背景滚动
+            document.body.style.overflow = '';
+        });
+
+        // 点击模态框外部关闭
+        indicatorModal.addEventListener('click', (e) => {
+            if (e.target === indicatorModal) {
+                indicatorModal.classList.remove('show');
+                document.body.style.overflow = '';
+            }
+        });
+
+        // 初始化默认值
+        document.getElementById('carStandardPremiumRatio').value = '0.5';  // 车险标保系数默认值
+        document.getElementById('motoStandardPremiumRatio').value = '1.8';  // 摩意险标保系数默认值
+    </script>
+</body>
+</html>
