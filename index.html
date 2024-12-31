@@ -317,13 +317,81 @@
                 grid-template-columns: 1fr;
             }
         }
+
+        .header-controls {
+            display: flex;
+            gap: 12px;
+            align-items: center;
+        }
+
+        .scheme-selector {
+            display: flex;
+            gap: 8px;
+        }
+
+        .scheme-btn {
+            padding: 6px 12px;
+            border: 1px solid #dadce0;
+            background: #fff;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            color: #5f6368;
+            transition: all 0.2s;
+        }
+
+        .scheme-btn:hover {
+            background: #f1f3f4;
+            border-color: #1a73e8;
+            color: #1a73e8;
+        }
+
+        .scheme-btn.active {
+            background: #1a73e8;
+            border-color: #1a73e8;
+            color: #fff;
+        }
+
+        .export-btn {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 12px;
+            border: 1px solid #dadce0;
+            background: #fff;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            color: #5f6368;
+            transition: all 0.2s;
+        }
+
+        .export-btn:hover {
+            background: #f1f3f4;
+            border-color: #1a73e8;
+            color: #1a73e8;
+        }
     </style>
 </head>
 <body>
     <!-- 顶部标题+按钮 -->
     <div class="header-bar">
         <h1 class="page-title">车+摩意险成本动态测算工具</h1>
-        <button class="parameters-toggle" id="parametersToggleBtn">显示参数设置</button>
+        <div class="header-controls">
+            <div class="scheme-selector">
+                <button class="scheme-btn" data-scheme="150">赔付率150%</button>
+                <button class="scheme-btn" data-scheme="135">赔付率135%</button>
+                <button class="scheme-btn" data-scheme="120.8">赔付率120.8%</button>
+                <button class="scheme-btn" data-scheme="110">赔付率110%</button>
+            </div>
+            <button class="export-btn" id="exportBtn">
+                <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
+                    <path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/>
+                </svg>
+                导出数据
+            </button>
+            <button class="parameters-toggle" id="parametersToggleBtn">显示参数设置</button>
+        </div>
     </div>
 
     <div class="page-container">
@@ -515,7 +583,7 @@
                 </div>
                 <div class="form-group">
                     <label>
-                        <span>保单获取成本率</span>
+                        <span>手续费率</span>
                         <span class="default-value">默认：0%</span>
                     </label>
                     <input type="number" id="carHandlingFeeRate" name="carHandlingFeeRate" value="0" step="0.1">
@@ -523,7 +591,7 @@
                 </div>
                 <div class="form-group">
                     <label>
-                        <span>销售推动费用率</span>
+                        <span>销推费用率</span>
                         <span class="default-value">默认：0.3%</span>
                     </label>
                     <input type="number" id="carSalesPromotionRate" name="carSalesPromotionRate" value="0.3" step="0.1">
@@ -915,6 +983,152 @@
         // 初始化默认值
         document.getElementById('carStandardPremiumRatio').value = '0.5';  // 车险标保系数默认值
         document.getElementById('motoStandardPremiumRatio').value = '1.8';  // 摩意险标保系数默认值
+
+        // 定义方案参数
+        const schemes = {
+            '150': {
+                laborBaseRate: 2.8,
+                fixedOperationRate: 7.21,
+                carPremium: 1200,
+                carLossRatio: 150,
+                carHandlingFeeRate: 0,
+                carSalesPromotionRate: 0.15,
+                carStandardPremiumRatio: 0.5,
+                motoPremiumRatio: 1.75,
+                motoLossRatio: 4,
+                motoHandlingFeeRate: 66.1,
+                motoSalesPromotionRate: 0.74,
+                motoStandardPremiumRatio: 1.8
+            },
+            '135': {
+                laborBaseRate: 2.8,
+                fixedOperationRate: 7.21,
+                carPremium: 1200,
+                carLossRatio: 135,
+                carHandlingFeeRate: 0,
+                carSalesPromotionRate: 0.15,
+                carStandardPremiumRatio: 0.5,
+                motoPremiumRatio: 1.75,
+                motoLossRatio: 4,
+                motoHandlingFeeRate: 66.1,
+                motoSalesPromotionRate: 0.74,
+                motoStandardPremiumRatio: 1.8
+            },
+            '120.8': {
+                laborBaseRate: 2.8,
+                fixedOperationRate: 7.21,
+                carPremium: 1200,
+                carLossRatio: 120.8,
+                carHandlingFeeRate: 0,
+                carSalesPromotionRate: 0.15,
+                carStandardPremiumRatio: 0.5,
+                motoPremiumRatio: 1.75,
+                motoLossRatio: 4,
+                motoHandlingFeeRate: 66.1,
+                motoSalesPromotionRate: 0.74,
+                motoStandardPremiumRatio: 1.8
+            },
+            '110': {
+                laborBaseRate: 2.8,
+                fixedOperationRate: 7.21,
+                carPremium: 1200,
+                carLossRatio: 110,
+                carHandlingFeeRate: 0,
+                carSalesPromotionRate: 0.15,
+                carStandardPremiumRatio: 0.5,
+                motoPremiumRatio: 1.75,
+                motoLossRatio: 4,
+                motoHandlingFeeRate: 66.1,
+                motoSalesPromotionRate: 0.74,
+                motoStandardPremiumRatio: 1.8
+            }
+        };
+
+        // 应用方案参数
+        function applyScheme(scheme) {
+            const params = schemes[scheme];
+            Object.keys(params).forEach(key => {
+                const input = document.getElementById(key);
+                if (input) {
+                    input.value = params[key];
+                }
+            });
+            calculateIndicators();
+        }
+
+        // 导出数据为Excel
+        function exportData() {
+            const data = getCurrentData();
+            let csv = '\ufeff';  // UTF-8 BOM
+            
+            // 创建汇总表格
+            csv += '车+摩意险成本测算结果汇总表\n\n';
+            
+            // 添加表头
+            csv += '指标分类,车险,摩意险,合计\n';
+            
+            // 构建数据行
+            const indicators = [
+                '保费(万元)',
+                '赔付成本(万元)',
+                '手续费(万元)',
+                '销推费用(万元)',
+                '人力成本(万元)',
+                '边际贡献(万元)',
+                '利润(万元)',
+                '综合成本率(%)',
+                '变动成本率(%)',
+                '边际贡献率(%)'
+            ];
+            
+            indicators.forEach(indicator => {
+                const row = [
+                    indicator,
+                    getValueFromData(data.car, indicator),
+                    getValueFromData(data.moto, indicator),
+                    getValueFromData(data.combined, indicator)
+                ];
+                csv += row.join(',') + '\n';
+            });
+            
+            // 创建下载
+            const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = '车摩意险成本测算结果.csv';
+            link.click();
+        }
+
+        // 辅助函数：从数据中获取指定指标的值
+        function getValueFromData(data, indicator) {
+            const item = data.find(d => d.name === indicator.split('(')[0]);
+            return item ? (indicator.includes('%') ? item.rate : item.value) : '';
+        }
+
+        // 绑定事件
+        document.addEventListener('DOMContentLoaded', function() {
+            // 绑定方案选择按钮事件
+            document.querySelectorAll('.scheme-btn').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    document.querySelectorAll('.scheme-btn').forEach(b => b.classList.remove('active'));
+                    this.classList.add('active');
+                    applyScheme(this.dataset.scheme);
+                });
+            });
+            
+            // 绑定导出按钮事件
+            document.getElementById('exportBtn').addEventListener('click', exportData);
+        });
+
+        // 在 DOMContentLoaded 事件中添加初始化方案选择
+        document.addEventListener('DOMContentLoaded', function() {
+            // ... 现有代码 ...
+
+            // 默认选择保本方案
+            const defaultSchemeBtn = document.querySelector('[data-scheme="120.8"]');
+            defaultSchemeBtn.classList.add('active');
+            applyScheme('120.8');
+        });
     </script>
 </body>
 </html>
